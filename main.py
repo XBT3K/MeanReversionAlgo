@@ -1,21 +1,21 @@
-import configparser
-import oandapyV20
-import oandapyV20.endpoints.orders as orders
 import pandas as pd
+import numpy as np
+import oandapyV20
+import oandapyV20.endpoints.instruments as instruments
+import oandapyV20.endpoints.orders as orders
 import time
+import configparser
 
-config = configparser.ConfigParser()
-config.read('config.ini')
 
 class MeanReversion:
-    def __init__(self, symbol, window_size, overbought_threshold, oversold_threshold):
+    def __init__(self, symbol, window_size, overbought_threshold, oversold_threshold, units):
         self.symbol = symbol
         self.window_size = window_size
         self.overbought_threshold = overbought_threshold
         self.oversold_threshold = oversold_threshold
         self.data = pd.DataFrame()
-        self.oanda = oandapyV20.API(access_token=config.get('oanda', 'access_token'), environment=config.get('oanda', 'environment'))
-        self.units = config.getint('trading', 'units')
+        self.oanda = oandapyV20.API(access_token=config['oanda']['access_token'], environment=config['oanda']['environment'])
+        self.units = units
         
     def get_data(self):
         params = {"count": self.window_size, "granularity": "M5"}
@@ -52,16 +52,30 @@ class MeanReversion:
                 "type": "MARKET"
             }
         }
-        r = orders.OrderCreate(accountID=config.get('oanda', 'account_id'), data=params)
+        r = orders.OrderCreate(accountID=config['oanda']['account_id'], data=params)
         self.oanda.request(r)
         print(r.response)
 
-mean_reversion = MeanReversion(symbol=config.get('trading', 'symbol'), window_size=config.getint('trading', 'window_size'), overbought_threshold=config.getfloat('trading', 'overbought_threshold'), oversold_threshold=config.getfloat('trading', 'oversold_threshold'))
-while True:
-    try:
-        mean_reversion.get_data()
-        signal = mean_reversion.check_signal()
-        mean_reversion.execute_trade(signal)
-        time.sleep(60)
-    except:
-        print("Error occurred.")
+
+def run_live_trading():
+    mean_reversion = MeanReversion(symbol=config['oanda']['symbol'], window_size=int(config['mean_reversion']['window_size']), 
+                                   overbought_threshold=float(config['mean_reversion']['overbought_threshold']), 
+                                   oversold_threshold=float(config['mean_reversion']['oversold_threshold']), 
+                                   units=int(config['oanda']['units']))
+    while True:
+        try:
+            mean_reversion.get_data()
+            signal = mean_reversion.check_signal()
+            mean_reversion.execute_trade(signal)
+            time.sleep(60)
+        except:
+            print("Error occurred.")
+
+
+def run_backtesting():
+    mean_reversion = MeanReversion(symbol=config['oanda']['symbol'], window_size=int(config['mean_reversion']['window_size']), 
+                                   overbought_threshold=float(config['mean_reversion']['overbought_threshold']), 
+                                   oversold_threshold=float(config['mean_reversion']['oversold_threshold']), 
+                                   units=int(config['oanda']['units']))
+    historical_data = pd.read_csv(config['backtesting']['data_file'], index_col=0, parse_dates=True)
+    for index
