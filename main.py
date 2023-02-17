@@ -1,8 +1,11 @@
-import pandas as pd
-import numpy as np
+import configparser
 import oandapyV20
-import oandapyV20.endpoints.instruments as instruments
+import oandapyV20.endpoints.orders as orders
+import pandas as pd
 import time
+
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 class MeanReversion:
     def __init__(self, symbol, window_size, overbought_threshold, oversold_threshold):
@@ -11,8 +14,8 @@ class MeanReversion:
         self.overbought_threshold = overbought_threshold
         self.oversold_threshold = oversold_threshold
         self.data = pd.DataFrame()
-        self.oanda = oandapyV20.API(access_token=your_access_token, environment=your_environment)
-        self.units = 1000
+        self.oanda = oandapyV20.API(access_token=config.get('oanda', 'access_token'), environment=config.get('oanda', 'environment'))
+        self.units = config.getint('trading', 'units')
         
     def get_data(self):
         params = {"count": self.window_size, "granularity": "M5"}
@@ -49,11 +52,11 @@ class MeanReversion:
                 "type": "MARKET"
             }
         }
-        r = orders.OrderCreate(accountID=your_account_id, data=params)
+        r = orders.OrderCreate(accountID=config.get('oanda', 'account_id'), data=params)
         self.oanda.request(r)
         print(r.response)
 
-mean_reversion = MeanReversion(symbol="EUR_USD", window_size=20, overbought_threshold=1.5, oversold_threshold=-1.5)
+mean_reversion = MeanReversion(symbol=config.get('trading', 'symbol'), window_size=config.getint('trading', 'window_size'), overbought_threshold=config.getfloat('trading', 'overbought_threshold'), oversold_threshold=config.getfloat('trading', 'oversold_threshold'))
 while True:
     try:
         mean_reversion.get_data()
